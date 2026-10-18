@@ -171,16 +171,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 7. Fetch Room Messages
-      const { data: messagesData } = await supabase
-        .from('room_messages')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: true })
-        .limit(100);
+      // 7. Fetch Room Messages (graceful if table is pending schema creation)
+      try {
+        const { data: messagesData } = await supabase
+          .from('room_messages')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: true })
+          .limit(100);
 
-      if (messagesData) {
-        setMessages(messagesData);
+        if (messagesData) {
+          setMessages(messagesData);
+        }
+      } catch {
+        // Silently skip if table is not yet created
       }
     } catch (err: unknown) {
       console.error('Error fetching room state:', err);

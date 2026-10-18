@@ -82,6 +82,7 @@ BEGIN
 END;
 $$;
 
+GRANT ALL ON TABLE room_messages TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION send_room_message(UUID, TEXT) TO authenticated, anon;
 
 -- Safely add to realtime publication
@@ -94,3 +95,6 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE room_messages;
     END IF;
 END $$;
+
+-- Notify PostgREST to reload schema cache immediately
+NOTIFY pgrst, 'reload schema';

@@ -914,5 +914,9 @@ BEGIN
 END;
 $$;
 
+GRANT ALL ON TABLE room_messages TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION send_room_message(UUID, TEXT) TO authenticated, anon;
+
+-- Notify PostgREST to reload schema cache immediately
+NOTIFY pgrst, 'reload schema';
 
