@@ -36,6 +36,8 @@ interface GameContextType {
   resetGame: () => Promise<boolean>;
   leaveRoom: () => void;
   clearError: () => void;
+  addTestPartner: () => Promise<boolean>;
+  refreshRoomState: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -55,10 +57,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearError = () => setError(null);
 
-  // Derived state
+  // Derived state: host is recognized by participant record OR room.host_id matching current user
   const myParticipant = participants.find((p) => p.user_id === user?.id);
-  const isHost = Boolean(myParticipant?.is_host);
-  const mySlot = myParticipant?.role_slot ?? null;
+  const isHost = Boolean(myParticipant?.is_host || (room && user && room.host_id === user.id));
+  const mySlot = myParticipant?.role_slot ?? (room?.host_id === user?.id ? 1 : null);
   const partner = participants.find((p) => p.user_id !== user?.id) ?? null;
 
   const myAnswer = answers.find((a) => a.user_id === user?.id) ?? null;
@@ -462,6 +464,37 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Add Test Partner (for solo play / quick testing)
+  const addTestPartner = async (): Promise<boolean> => {
+    if (!room) return false;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error: rpcError } = await supabase.rpc('add_test_partner', {
+        p_room_id: room.id,
+      });
+
+      if (rpcError) throw rpcError;
+
+      await fetchRoomState(room.id);
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to add test partner';
+      setError(msg);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manual refresh room state
+  const refreshRoomState = async (): Promise<void> => {
+    if (room?.id) {
+      await fetchRoomState(room.id);
+    }
+  };
+
   // Leave Room
   const leaveRoom = () => {
     unsubscribeChannel();
@@ -516,6 +549,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetGame,
         leaveRoom,
         clearError,
+        addTestPartner,
+        refreshRoomState,
       }}
     >
       {children}

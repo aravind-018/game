@@ -128,7 +128,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({ onStart, disabled = 
           className="w-full py-4 px-6 bg-gradient-to-r from-pink-500 via-rose-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-bold rounded-2xl shadow-xl shadow-rose-600/30 hover:shadow-rose-600/50 transition-all flex items-center justify-center gap-2 cursor-pointer text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play className="w-5 h-5 fill-white" />
-          <span>Launch Game for Both of Us</span>
+          <span>Launch Game</span>
         </button>
       ) : (
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-center text-sm text-slate-300">
