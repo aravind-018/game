@@ -802,17 +802,23 @@ GRANT EXECUTE ON FUNCTION submit_player_answer(UUID, TEXT, TEXT) TO authenticate
 GRANT EXECUTE ON FUNCTION advance_round(UUID) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION reset_room(UUID) TO authenticated, anon;
 
--- 14. REALTIME PUBLICATION
+-- 14. REALTIME PUBLICATION (Safely check if already added)
 DO $$
+DECLARE
+    tbl text;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
         CREATE PUBLICATION supabase_realtime;
     END IF;
+
+    FOR tbl IN SELECT unnest(ARRAY['rooms', 'room_participants', 'game_sessions', 'game_rounds', 'player_answers', 'scores'])
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_publication_tables 
+            WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = tbl
+        ) THEN
+            EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', tbl);
+        END IF;
+    END LOOP;
 END $$;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE room_participants;
-ALTER PUBLICATION supabase_realtime ADD TABLE game_sessions;
-ALTER PUBLICATION supabase_realtime ADD TABLE game_rounds;
-ALTER PUBLICATION supabase_realtime ADD TABLE player_answers;
-ALTER PUBLICATION supabase_realtime ADD TABLE scores;
