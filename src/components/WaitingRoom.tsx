@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check, Share2, Users, Heart, AlertCircle, Shield, Bot, RefreshCw } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,15 @@ export const WaitingRoom: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Poll room state every 2 seconds while in waiting room to catch partner joining or game launch
+  useEffect(() => {
+    if (!room?.id) return;
+    const interval = setInterval(() => {
+      refreshRoomState();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [room?.id, refreshRoomState]);
 
   const handleCopyCode = () => {
     if (!room?.code) return;

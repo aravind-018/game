@@ -40,6 +40,17 @@ interface GameContextType {
   refreshRoomState: () => Promise<void>;
 }
 
+const getErrorMessage = (err: unknown, fallback: string): string => {
+  if (!err) return fallback;
+  if (typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    if (typeof obj.message === 'string') return obj.message;
+    if (typeof obj.error_description === 'string') return obj.error_description;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+};
+
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -292,7 +303,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setupRealtimeSubscription(createdRoomId);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create room';
+      const msg = getErrorMessage(err, 'Failed to create room');
       setError(msg);
       return false;
     } finally {
@@ -333,7 +344,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setupRealtimeSubscription(joinedRoomId);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to join room';
+      const msg = getErrorMessage(err, 'Failed to join room');
       setError(msg);
       return false;
     } finally {
@@ -359,7 +370,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetchRoomState(room.id);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to start game';
+      const msg = getErrorMessage(err, 'Failed to start game');
       setError(msg);
       return false;
     } finally {
@@ -408,7 +419,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit answer';
+      const msg = getErrorMessage(err, 'Failed to submit answer');
       setError(msg);
       return false;
     } finally {
@@ -432,7 +443,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetchRoomState(room.id);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to advance round';
+      const msg = getErrorMessage(err, 'Failed to advance round');
       setError(msg);
       return false;
     } finally {
@@ -456,7 +467,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetchRoomState(room.id);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to reset room';
+      const msg = getErrorMessage(err, 'Failed to reset room');
       setError(msg);
       return false;
     } finally {
@@ -480,7 +491,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetchRoomState(room.id);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add test partner';
+      const msg = getErrorMessage(err, 'Failed to add test partner');
       setError(msg);
       return false;
     } finally {
