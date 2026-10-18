@@ -66,14 +66,15 @@ export const RoomChat: React.FC = () => {
   return (
     <>
       {/* Floating Toggle Button */}
+      {/* Floating Toggle Button (Guaranteed Perfect Circle) */}
       {!isOpen && (
         <button
           type="button"
           onClick={handleOpen}
           aria-label="Open couple chat"
-          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-rose-600 text-white shadow-2xl shadow-rose-600/50 hover:shadow-rose-600/80 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer group relative"
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full aspect-square bg-slate-900 border-2 border-rose-500/80 hover:border-rose-400 text-rose-400 hover:text-white hover:bg-rose-600 shadow-2xl shadow-rose-950/80 hover:shadow-rose-600/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer group relative backdrop-blur-md"
         >
-          <MessageCircle className="w-6 h-6 group-hover:rotate-6 transition-transform" />
+          <MessageCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
           
           {/* Notification Dot Badge over Chat Icon */}
           {unreadCount > 0 && (
