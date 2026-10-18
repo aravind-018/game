@@ -161,6 +161,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err: unknown) {
       console.error('Error fetching room state:', err);
+      const msg = getErrorMessage(err, '');
+      if (msg) setError(msg);
     }
   }, []);
 
@@ -365,11 +367,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         p_total_rounds: totalRounds,
       });
 
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        console.error('start_game RPC returned error:', rpcError);
+        throw rpcError;
+      }
 
       await fetchRoomState(room.id);
       return true;
     } catch (err: unknown) {
+      console.error('startGame failed:', err);
       const msg = getErrorMessage(err, 'Failed to start game');
       setError(msg);
       return false;

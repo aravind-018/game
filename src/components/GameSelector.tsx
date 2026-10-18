@@ -28,13 +28,15 @@ const getGameIcon = (iconName: string) => {
 };
 
 export const GameSelector: React.FC<GameSelectorProps> = ({ onStart, disabled = false }) => {
-  const { isHost } = useGame();
+  const { isHost, participants } = useGame();
   const [selectedGame, setSelectedGame] = useState<GameType>('how_well_do_you_know_me');
   const [rounds, setRounds] = useState<number>(5);
 
+  const canLaunch = isHost || participants.length >= 2;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (disabled) return;
+    if (disabled || !canLaunch) return;
     onStart(selectedGame, rounds);
   };
 
@@ -46,7 +48,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({ onStart, disabled = 
             Select Game Experience
           </label>
           <span className="text-xs text-slate-400">
-            {isHost ? 'You choose the game for both players' : 'Host will start the game'}
+            {canLaunch ? 'Pick any game mode to begin' : 'Waiting for host to start'}
           </span>
         </div>
 
@@ -120,8 +122,8 @@ export const GameSelector: React.FC<GameSelectorProps> = ({ onStart, disabled = 
         </div>
       </div>
 
-      {/* Host Start Button */}
-      {isHost ? (
+      {/* Start Button */}
+      {canLaunch ? (
         <button
           type="submit"
           disabled={disabled}
@@ -133,7 +135,7 @@ export const GameSelector: React.FC<GameSelectorProps> = ({ onStart, disabled = 
       ) : (
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-center text-sm text-slate-300">
           <p className="animate-pulse text-rose-300">
-            Waiting for the host to pick a game and begin...
+            Waiting for host to pick a game and begin...
           </p>
         </div>
       )}
