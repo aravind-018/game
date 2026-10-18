@@ -6,6 +6,7 @@ import { Lobby } from './components/Lobby';
 import { WaitingRoom } from './components/WaitingRoom';
 import { GameArena } from './components/GameArena';
 import { GameOver } from './components/GameOver';
+import { RoomChat } from './components/RoomChat';
 
 const GameContent: React.FC = () => {
   const { room, session, isGameFinished } = useGame();
@@ -45,6 +46,7 @@ export function App() {
           {/* Main Container */}
           <main className="flex-1 flex flex-col justify-center">
             <GameContent />
+            <RoomChat />
           </main>
 
           {/* Footer */}

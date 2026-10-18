@@ -93,6 +93,15 @@ export interface Score {
   updated_at: string;
 }
 
+export interface RoomMessage {
+  id: string;
+  room_id: string;
+  user_id: string;
+  display_name: string;
+  message: string;
+  created_at: string;
+}
+
 export const GAMES_CATALOG: GameMetadata[] = [
   {
     id: 'how_well_do_you_know_me',

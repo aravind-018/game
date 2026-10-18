@@ -10,6 +10,7 @@ import type {
   GameRound,
   PlayerAnswer,
   Score,
+  RoomMessage,
 } from '../types/game';
 
 interface GameContextType {
@@ -19,6 +20,7 @@ interface GameContextType {
   currentRound: GameRound | null;
   answers: PlayerAnswer[];
   scores: Score[];
+  messages: RoomMessage[];
   isHost: boolean;
   mySlot: 1 | 2 | null;
   partner: Participant | null;
@@ -34,6 +36,7 @@ interface GameContextType {
   submitAnswer: (answerText: string, partnerPrediction?: string) => Promise<boolean>;
   advanceRound: () => Promise<boolean>;
   resetGame: () => Promise<boolean>;
+  sendMessage: (text: string) => Promise<boolean>;
   leaveRoom: () => void;
   clearError: () => void;
   addTestPartner: () => Promise<boolean>;
@@ -61,6 +64,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentRound, setCurrentRound] = useState<GameRound | null>(null);
   const [answers, setAnswers] = useState<PlayerAnswer[]>([]);
   const [scores, setScores] = useState<Score[]>([]);
+  const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,8 +168,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setCurrentRound(null);
           setAnswers([]);
-          setScores([]);
         }
+      }
+
+      // 7. Fetch Room Messages
+      const { data: messagesData } = await supabase
+        .from('room_messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (messagesData) {
+        setMessages(messagesData);
       }
     } catch (err: unknown) {
       console.error('Error fetching room state:', err);
@@ -270,6 +285,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (data) setScores(data);
               });
           }
+        }
+      )
+      // Listen to room_messages changes
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'room_messages', filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          const newMsg = payload.new as RoomMessage;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
         }
       )
       .subscribe((status) => {
@@ -535,6 +562,46 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Send Room Chat Message
+  const sendMessage = async (text: string): Promise<boolean> => {
+    if (!room || !user || !text.trim()) return false;
+    try {
+      const myParticipant = participants.find((p) => p.user_id === user.id);
+      const displayName = myParticipant?.display_name || user.user_metadata?.display_name || 'Player';
+
+      const { data, error: rpcError } = await supabase.rpc('send_room_message', {
+        p_room_id: room.id,
+        p_message: text.trim(),
+      });
+
+      if (rpcError) {
+        // Fallback directly to insert
+        const { data: insertData, error: insertError } = await supabase
+          .from('room_messages')
+          .insert({
+            room_id: room.id,
+            user_id: user.id,
+            display_name: displayName,
+            message: text.trim(),
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        if (insertData) {
+          setMessages((prev) => (prev.some((m) => m.id === insertData.id) ? prev : [...prev, insertData]));
+        }
+      } else if (data) {
+        setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
+      }
+
+      return true;
+    } catch (err: unknown) {
+      console.error('Failed to send room message:', err);
+      return false;
+    }
+  };
+
   // Leave Room
   const leaveRoom = () => {
     unsubscribeChannel();
@@ -545,6 +612,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentRound(null);
     setAnswers([]);
     setScores([]);
+    setMessages([]);
   };
 
   // Auto-restore room on refresh
@@ -572,6 +640,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentRound,
         answers,
         scores,
+        messages,
         isHost,
         mySlot,
         partner,
@@ -587,6 +656,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         submitAnswer,
         advanceRound,
         resetGame,
+        sendMessage,
         leaveRoom,
         clearError,
         addTestPartner,
