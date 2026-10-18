@@ -157,7 +157,34 @@ ALTER TABLE game_rounds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scores ENABLE ROW LEVEL SECURITY;
 
--- 6. RLS POLICIES
+-- 6. RLS HELPER FUNCTIONS & POLICIES
+
+-- Helper functions with SECURITY DEFINER bypass RLS to prevent recursion (Error 42P17)
+CREATE OR REPLACE FUNCTION is_room_participant(p_room_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM room_participants
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION is_room_host(p_room_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM rooms
+    WHERE id = p_room_id AND host_id = p_user_id
+  );
+$$;
 
 -- ROOMS POLICIES
 CREATE POLICY "Participants can view their room"
@@ -165,10 +192,7 @@ ON rooms FOR SELECT
 TO authenticated
 USING (
     host_id = auth.uid()
-    OR EXISTS (
-        SELECT 1 FROM room_participants rp
-        WHERE rp.room_id = rooms.id AND rp.user_id = auth.uid()
-    )
+    OR is_room_participant(id, auth.uid())
 );
 
 CREATE POLICY "Host can insert room"
@@ -187,14 +211,8 @@ ON room_participants FOR SELECT
 TO authenticated
 USING (
     user_id = auth.uid()
-    OR EXISTS (
-        SELECT 1 FROM room_participants rp
-        WHERE rp.room_id = room_participants.room_id AND rp.user_id = auth.uid()
-    )
-    OR EXISTS (
-        SELECT 1 FROM rooms r
-        WHERE r.id = room_participants.room_id AND r.host_id = auth.uid()
-    )
+    OR is_room_participant(room_id, auth.uid())
+    OR is_room_host(room_id, auth.uid())
 );
 
 CREATE POLICY "Users can join as participant"
@@ -212,10 +230,7 @@ ON room_participants FOR DELETE
 TO authenticated
 USING (
     user_id = auth.uid()
-    OR EXISTS (
-        SELECT 1 FROM rooms r
-        WHERE r.id = room_participants.room_id AND r.host_id = auth.uid()
-    )
+    OR is_room_host(room_id, auth.uid())
 );
 
 -- QUESTION BANKS POLICIES (All authenticated users can read; modifications restricted)
@@ -230,10 +245,7 @@ ON custom_questions FOR SELECT
 TO authenticated
 USING (
     created_by = auth.uid()
-    OR EXISTS (
-        SELECT 1 FROM room_participants rp
-        WHERE rp.room_id = custom_questions.room_id AND rp.user_id = auth.uid()
-    )
+    OR is_room_participant(room_id, auth.uid())
 );
 
 CREATE POLICY "Room participants can insert custom questions"
@@ -241,10 +253,7 @@ ON custom_questions FOR INSERT
 TO authenticated
 WITH CHECK (
     created_by = auth.uid()
-    AND EXISTS (
-        SELECT 1 FROM room_participants rp
-        WHERE rp.room_id = custom_questions.room_id AND rp.user_id = auth.uid()
-    )
+    AND is_room_participant(room_id, auth.uid())
 );
 
 -- GAME SESSIONS POLICIES
@@ -252,14 +261,8 @@ CREATE POLICY "Room participants can view game sessions"
 ON game_sessions FOR SELECT
 TO authenticated
 USING (
-    EXISTS (
-        SELECT 1 FROM room_participants rp
-        WHERE rp.room_id = game_sessions.room_id AND rp.user_id = auth.uid()
-    )
-    OR EXISTS (
-        SELECT 1 FROM rooms r
-        WHERE r.id = game_sessions.room_id AND r.host_id = auth.uid()
-    )
+    is_room_participant(room_id, auth.uid())
+    OR is_room_host(room_id, auth.uid())
 );
 
 -- GAME ROUNDS POLICIES
@@ -269,8 +272,8 @@ TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM game_sessions gs
-        JOIN room_participants rp ON rp.room_id = gs.room_id
-        WHERE gs.id = game_rounds.session_id AND rp.user_id = auth.uid()
+        WHERE gs.id = game_rounds.session_id
+          AND (is_room_participant(gs.room_id, auth.uid()) OR is_room_host(gs.room_id, auth.uid()))
     )
 );
 
@@ -281,13 +284,14 @@ ON player_answers FOR SELECT
 TO authenticated
 USING (
     user_id = auth.uid()
-    OR EXISTS (
-        SELECT 1 FROM game_rounds gr
-        JOIN game_sessions gs ON gs.id = gr.session_id
-        JOIN room_participants rp ON rp.room_id = gs.room_id
-        WHERE gr.id = player_answers.round_id
-          AND rp.user_id = auth.uid()
-          AND gr.status = 'revealed'
+    OR (
+        EXISTS (
+            SELECT 1 FROM game_rounds gr
+            JOIN game_sessions gs ON gs.id = gr.session_id
+            WHERE gr.id = player_answers.round_id
+              AND gr.status = 'revealed'
+              AND (is_room_participant(gs.room_id, auth.uid()) OR is_room_host(gs.room_id, auth.uid()))
+        )
     )
 );
 
@@ -299,10 +303,9 @@ WITH CHECK (
     AND EXISTS (
         SELECT 1 FROM game_rounds gr
         JOIN game_sessions gs ON gs.id = gr.session_id
-        JOIN room_participants rp ON rp.room_id = gs.room_id
         WHERE gr.id = player_answers.round_id
-          AND rp.user_id = auth.uid()
           AND gr.status = 'in_progress'
+          AND is_room_participant(gs.room_id, auth.uid())
     )
 );
 
@@ -313,10 +316,11 @@ TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM game_sessions gs
-        JOIN room_participants rp ON rp.room_id = gs.room_id
-        WHERE gs.id = scores.session_id AND rp.user_id = auth.uid()
+        WHERE gs.id = scores.session_id
+          AND (is_room_participant(gs.room_id, auth.uid()) OR is_room_host(gs.room_id, auth.uid()))
     )
 );
+
 
 -- 7. REALTIME REPLICATION CONFIGURATION
 -- Ensure publication exists and replica identity is FULL for reliable change payloads
