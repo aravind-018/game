@@ -113,51 +113,59 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (partError) throw partError;
       setParticipants(partData || []);
 
-      // 3. Fetch Active Game Session
-      const { data: sessionData, error: sessError } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (sessError) throw sessError;
-      setSession(sessionData ?? null);
-
-      if (sessionData) {
-        // 4. Fetch Scores
-        const { data: scoreData } = await supabase
-          .from('scores')
-          .select('*')
-          .eq('session_id', sessionData.id);
-        setScores(scoreData || []);
-
-        // 5. Fetch Current Round
-        const { data: roundData, error: roundError } = await supabase
-          .from('game_rounds')
-          .select('*')
-          .eq('session_id', sessionData.id)
-          .eq('round_number', sessionData.current_round_index)
-          .maybeSingle();
-
-        if (roundError) throw roundError;
-        setCurrentRound(roundData ?? null);
-
-        // 6. Fetch Answers for this round
-        if (roundData) {
-          const { data: answersData } = await supabase
-            .from('player_answers')
-            .select('*')
-            .eq('round_id', roundData.id);
-          setAnswers(answersData || []);
-        } else {
-          setAnswers([]);
-        }
-      } else {
+      // If room is in 'waiting' status, it has reset to the pre-game lobby
+      if (roomData.status === 'waiting') {
+        setSession(null);
         setCurrentRound(null);
         setAnswers([]);
         setScores([]);
+      } else {
+        // 3. Fetch Active or Finished Game Session
+        const { data: sessionData, error: sessError } = await supabase
+          .from('game_sessions')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (sessError) throw sessError;
+        setSession(sessionData ?? null);
+
+        if (sessionData) {
+          // 4. Fetch Scores
+          const { data: scoreData } = await supabase
+            .from('scores')
+            .select('*')
+            .eq('session_id', sessionData.id);
+          setScores(scoreData || []);
+
+          // 5. Fetch Current Round
+          const { data: roundData, error: roundError } = await supabase
+            .from('game_rounds')
+            .select('*')
+            .eq('session_id', sessionData.id)
+            .eq('round_number', sessionData.current_round_index)
+            .maybeSingle();
+
+          if (roundError) throw roundError;
+          setCurrentRound(roundData ?? null);
+
+          // 6. Fetch Answers for this round
+          if (roundData) {
+            const { data: answersData } = await supabase
+              .from('player_answers')
+              .select('*')
+              .eq('round_id', roundData.id);
+            setAnswers(answersData || []);
+          } else {
+            setAnswers([]);
+          }
+        } else {
+          setCurrentRound(null);
+          setAnswers([]);
+          setScores([]);
+        }
       }
     } catch (err: unknown) {
       console.error('Error fetching room state:', err);
@@ -457,22 +465,37 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Reset Game RPC (Play Again)
+  // Reset Game RPC (Play Again in Same Room)
   const resetGame = async (): Promise<boolean> => {
     if (!room) return false;
     setLoading(true);
     setError(null);
 
     try {
-      const { error: rpcError } = await supabase.rpc('reset_room_game', {
+      // Clear local session state immediately so UI switches back to WaitingRoom
+      setSession(null);
+      setCurrentRound(null);
+      setAnswers([]);
+      setScores([]);
+
+      // Try reset_room first, fallback to reset_room_game
+      let { error: rpcError } = await supabase.rpc('reset_room', {
         p_room_id: room.id,
       });
 
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        const fallbackRes = await supabase.rpc('reset_room_game', {
+          p_room_id: room.id,
+        });
+        if (fallbackRes.error) {
+          throw rpcError;
+        }
+      }
 
       await fetchRoomState(room.id);
       return true;
     } catch (err: unknown) {
+      console.error('Failed to reset room:', err);
       const msg = getErrorMessage(err, 'Failed to reset room');
       setError(msg);
       return false;

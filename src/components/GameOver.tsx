@@ -5,8 +5,17 @@ import { useGame } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
 
 export const GameOver: React.FC = () => {
-  const { session, scores, participants, resetGame, leaveRoom, isHost, loading } = useGame();
+  const { room, session, scores, participants, resetGame, leaveRoom, loading, refreshRoomState } = useGame();
   const { user } = useAuth();
+
+  // Poll room state every 2 seconds while on game over so partner automatically transitions back to waiting room
+  useEffect(() => {
+    if (!room?.id) return;
+    const interval = setInterval(() => {
+      refreshRoomState();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [room?.id, refreshRoomState]);
 
   useEffect(() => {
     // Fire celebration confetti
@@ -118,20 +127,14 @@ export const GameOver: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        {isHost ? (
-          <button
-            onClick={() => resetGame()}
-            disabled={loading}
-            className="w-full py-4 px-6 bg-gradient-to-r from-pink-500 via-rose-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-bold rounded-2xl shadow-xl shadow-rose-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer text-base disabled:opacity-50"
-          >
-            <RotateCcw className="w-5 h-5" />
-            <span>Play Another Game (Same Room)</span>
-          </button>
-        ) : (
-          <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-rose-300">
-            Waiting for Host to choose the next game...
-          </div>
-        )}
+        <button
+          onClick={() => resetGame()}
+          disabled={loading}
+          className="w-full py-4 px-6 bg-gradient-to-r from-pink-500 via-rose-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-bold rounded-2xl shadow-xl shadow-rose-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer text-base disabled:opacity-50"
+        >
+          <RotateCcw className="w-5 h-5" />
+          <span>Play Another Game (Same Room)</span>
+        </button>
 
         <button
           onClick={leaveRoom}

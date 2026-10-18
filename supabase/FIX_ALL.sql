@@ -792,6 +792,18 @@ BEGIN
 END;
 $$;
 
+-- Alias reset_room_game
+CREATE OR REPLACE FUNCTION reset_room_game(p_room_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+    RETURN reset_room(p_room_id);
+END;
+$$;
+
 -- 13. GRANT EXECUTE ON ALL RPC FUNCTIONS
 GRANT EXECUTE ON FUNCTION is_room_participant(UUID, UUID) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION is_room_host(UUID, UUID) TO authenticated, anon;
@@ -802,6 +814,7 @@ GRANT EXECUTE ON FUNCTION start_game(UUID, TEXT, INT) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION submit_player_answer(UUID, TEXT, TEXT) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION advance_round(UUID) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION reset_room(UUID) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION reset_room_game(UUID) TO authenticated, anon;
 
 -- 14. REALTIME PUBLICATION (Safely check if already added)
 DO $$
