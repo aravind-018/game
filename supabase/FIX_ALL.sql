@@ -7,11 +7,12 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 2. RELAX FOREIGN KEYS ON USER_ID (Allows test partners / simulated guests)
+-- 2. RELAX FOREIGN KEYS ON USER_ID & NOT NULL CONSTRAINTS
 ALTER TABLE IF EXISTS room_participants DROP CONSTRAINT IF EXISTS room_participants_user_id_fkey;
 ALTER TABLE IF EXISTS scores DROP CONSTRAINT IF EXISTS scores_user_id_fkey;
 ALTER TABLE IF EXISTS player_answers DROP CONSTRAINT IF EXISTS player_answers_user_id_fkey;
 ALTER TABLE IF EXISTS game_rounds DROP CONSTRAINT IF EXISTS game_rounds_target_player_id_fkey;
+ALTER TABLE IF EXISTS game_rounds ALTER COLUMN started_at DROP NOT NULL;
 
 -- 3. HELPER FUNCTIONS (SECURITY DEFINER to avoid RLS recursion 42P17)
 CREATE OR REPLACE FUNCTION is_room_participant(p_room_id UUID, p_user_id UUID)
@@ -497,8 +498,8 @@ BEGIN
             v_target_id,
             v_target_name,
             'in_progress',
-            CASE WHEN v_round_num = 1 THEN now() ELSE NULL END,
-            CASE WHEN v_round_num = 1 THEN now() + interval '45 seconds' ELSE NULL END
+            now(),
+            now() + interval '45 seconds'
         );
 
         v_created_rounds := v_created_rounds + 1;
