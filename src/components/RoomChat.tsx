@@ -65,14 +65,14 @@ export const RoomChat: React.FC = () => {
 
   return (
     <>
-      {/* Floating Toggle Button */}
-      {/* Floating Toggle Button (Guaranteed Perfect Circle) */}
+      {/* Floating Toggle Button (Guaranteed Perfect Circle in Bottom-Right Corner) */}
       {!isOpen && (
         <button
           type="button"
           onClick={handleOpen}
           aria-label="Open couple chat"
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full aspect-square bg-slate-900 border-2 border-rose-500/80 hover:border-rose-400 text-rose-400 hover:text-white hover:bg-rose-600 shadow-2xl shadow-rose-950/80 hover:shadow-rose-600/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer group relative backdrop-blur-md"
+          style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}
+          className="w-14 h-14 rounded-full aspect-square bg-slate-900 border-2 border-rose-500/80 hover:border-rose-400 text-rose-400 hover:text-white hover:bg-rose-600 shadow-2xl shadow-rose-950/80 hover:shadow-rose-600/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer group backdrop-blur-md"
         >
           <MessageCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
           
@@ -88,7 +88,10 @@ export const RoomChat: React.FC = () => {
 
       {/* Floating Chat Modal */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[92vw] sm:w-96 max-h-[560px] h-[75vh] flex flex-col rounded-3xl bg-slate-900/95 border border-rose-500/40 shadow-2xl backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div
+          style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}
+          className="w-[92vw] sm:w-96 max-h-[560px] h-[75vh] flex flex-col rounded-3xl bg-slate-900/95 border border-rose-500/40 shadow-2xl backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200"
+        >
           {/* Header */}
           <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
             <div className="flex items-center gap-3">
