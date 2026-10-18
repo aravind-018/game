@@ -114,12 +114,85 @@ export const GameArena: React.FC = () => {
     displayOptions = currentRound.options;
   }
 
-  // Answer matching evaluation when revealed
+  // Answer matching evaluation when revealed (Strict matching per game mode)
   const partnerAnswer = answers.find((a) => a.user_id !== user?.id);
-  const isMatch = isRoundRevealed && (
-    (myAnswer?.points_awarded && myAnswer.points_awarded > 0) ||
-    (myAnswer?.answer_text?.toLowerCase().trim() === partnerAnswer?.answer_text?.toLowerCase().trim())
-  );
+
+  let isMatch = false;
+  let verdictTitle = '✨ Answers Revealed!';
+  let verdictSubtitle = 'Both partners have locked in their choices.';
+
+  if (isRoundRevealed && myAnswer && partnerAnswer) {
+    const myClean = (myAnswer.answer_text || '').toLowerCase().trim();
+    const partnerClean = (partnerAnswer.answer_text || '').toLowerCase().trim();
+
+    switch (session.game_type) {
+      case 'would_you_rather':
+      case 'who_is_more_likely_to':
+      case 'same_time_challenge': {
+        isMatch = Boolean(myClean && partnerClean && myClean === partnerClean);
+        verdictTitle = isMatch ? "🎉 It's a Match! 💕" : '✨ Different Choices!';
+        verdictSubtitle = isMatch
+          ? 'You both chose the exact same option! +10 pts'
+          : 'Opposites attract! You each picked different choices.';
+        break;
+      }
+
+      case 'how_well_do_you_know_me': {
+        const isTarget = currentRound.target_player_id === user?.id;
+        const targetClean = isTarget ? myClean : partnerClean;
+        const guesserPred = isTarget
+          ? (partnerAnswer.partner_prediction || partnerClean).toLowerCase().trim()
+          : (myAnswer.partner_prediction || myClean).toLowerCase().trim();
+
+        isMatch = Boolean(targetClean && guesserPred && targetClean === guesserPred);
+        verdictTitle = isMatch ? '🎯 Spot On! You Know Each Other! 💕' : '🙈 Not Quite This Time!';
+        verdictSubtitle = isMatch
+          ? `${isTarget ? partner?.display_name || 'Partner' : 'You'} correctly guessed ${isTarget ? 'your' : `${targetPlayerName}'s`} pick! +15 pts`
+          : `${isTarget ? partner?.display_name || 'Partner' : 'You'} guessed differently from what ${isTarget ? 'you' : targetPlayerName} chose.`;
+        break;
+      }
+
+      case 'couple_quiz_battle': {
+        const correctIdx = currentRound.correct_option_index;
+        const correctStr = (correctIdx !== null && currentRound.options && currentRound.options[correctIdx])
+          ? currentRound.options[correctIdx].toLowerCase().trim()
+          : null;
+
+        const myCorrect = Boolean(correctStr && myClean === correctStr);
+        const partnerCorrect = Boolean(correctStr && partnerClean === correctStr);
+
+        isMatch = myCorrect && partnerCorrect;
+        if (myCorrect && partnerCorrect) {
+          verdictTitle = '🏆 Both Got It Right! 🔥';
+          verdictSubtitle = 'Double trivia geniuses! +10 pts each.';
+        } else if (myCorrect) {
+          verdictTitle = '🌟 You Got It Right!';
+          verdictSubtitle = `You scored +10 pts! The correct answer was "${currentRound.options?.[correctIdx!]}".`;
+        } else if (partnerCorrect) {
+          verdictTitle = `🌟 ${partner?.display_name || 'Partner'} Got It Right!`;
+          verdictSubtitle = `${partner?.display_name || 'Partner'} scored +10 pts! The correct answer was "${currentRound.options?.[correctIdx!]}".`;
+        } else {
+          verdictTitle = '❌ Neither Got It Right!';
+          verdictSubtitle = `The correct answer was "${currentRound.options?.[correctIdx!] || 'N/A'}". Better luck next round!`;
+        }
+        break;
+      }
+
+      case 'deep_questions': {
+        isMatch = true;
+        verdictTitle = '💖 Heartfelt Connection!';
+        verdictSubtitle = 'Thank you for sharing vulnerable and honest thoughts with each other.';
+        break;
+      }
+
+      default: {
+        isMatch = Boolean(myClean && partnerClean && myClean === partnerClean);
+        verdictTitle = isMatch ? "🎉 It's a Match! 💕" : '✨ Different Perspectives!';
+        verdictSubtitle = isMatch ? 'Your answers synchronized! +10 pts' : 'You shared different answers.';
+        break;
+      }
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -324,12 +397,10 @@ export const GameArena: React.FC = () => {
                 : 'bg-slate-950/70 border-slate-800 text-slate-300'
             }`}>
               <div className="text-2xl mb-1">
-                {isMatch ? '🎉 It’s a Match! 💕' : '✨ Different Perspectives!'}
+                {verdictTitle}
               </div>
               <p className="text-xs">
-                {isMatch 
-                  ? 'Your answers synchronized! Bonus relationship points awarded.' 
-                  : 'Opposites attract! You each shared unique answers.'}
+                {verdictSubtitle}
               </p>
             </div>
 

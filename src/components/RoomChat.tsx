@@ -17,7 +17,7 @@ export const RoomChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const lastSeenLengthRef = useRef<number>(messages.length);
 
-  // Auto-scroll when new messages arrive
+  // Auto-scroll and unread badge tracking when new messages arrive
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -25,9 +25,12 @@ export const RoomChat: React.FC = () => {
       lastSeenLengthRef.current = messages.length;
     } else {
       if (messages.length > lastSeenLengthRef.current) {
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg && lastMsg.user_id !== user?.id) {
-          setUnreadCount((prev) => prev + (messages.length - lastSeenLengthRef.current));
+        const incomingFromPartner = messages
+          .slice(lastSeenLengthRef.current)
+          .filter((m) => m.user_id !== user?.id);
+
+        if (incomingFromPartner.length > 0) {
+          setUnreadCount((prev) => prev + incomingFromPartner.length);
         }
         lastSeenLengthRef.current = messages.length;
       }
@@ -68,12 +71,15 @@ export const RoomChat: React.FC = () => {
           type="button"
           onClick={handleOpen}
           aria-label="Open couple chat"
-          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-rose-600 text-white shadow-2xl shadow-rose-600/50 hover:shadow-rose-600/80 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer group"
+          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-rose-600 text-white shadow-2xl shadow-rose-600/50 hover:shadow-rose-600/80 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer group relative"
         >
           <MessageCircle className="w-6 h-6 group-hover:rotate-6 transition-transform" />
+          
+          {/* Notification Dot Badge over Chat Icon */}
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs animate-bounce shadow-md">
-              {unreadCount}
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-400 border-2 border-slate-950 shadow-md"></span>
             </span>
           )}
         </button>

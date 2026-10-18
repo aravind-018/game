@@ -633,9 +633,14 @@ BEGIN
                     v_is_match := true;
                     v_p1_points := 10;
                     v_p2_points := 10;
+                    v_p1_correct := true;
+                    v_p2_correct := true;
                 ELSE
-                    v_p1_points := 5;
-                    v_p2_points := 5;
+                    v_is_match := false;
+                    v_p1_points := 0;
+                    v_p2_points := 0;
+                    v_p1_correct := false;
+                    v_p2_correct := false;
                 END IF;
 
             WHEN 'how_well_do_you_know_me' THEN
@@ -643,13 +648,29 @@ BEGIN
                     IF lower(trim(COALESCE(v_p2_answer.partner_prediction, v_p2_answer.answer_text))) = lower(trim(v_p1_answer.answer_text)) THEN
                         v_is_match := true;
                         v_p2_correct := true;
+                        v_p1_correct := true;
                         v_p2_points := 15;
+                        v_p1_points := 15;
+                    ELSE
+                        v_is_match := false;
+                        v_p2_correct := false;
+                        v_p1_correct := false;
+                        v_p2_points := 0;
+                        v_p1_points := 0;
                     END IF;
                 ELSE
                     IF lower(trim(COALESCE(v_p1_answer.partner_prediction, v_p1_answer.answer_text))) = lower(trim(v_p2_answer.answer_text)) THEN
                         v_is_match := true;
                         v_p1_correct := true;
+                        v_p2_correct := true;
                         v_p1_points := 15;
+                        v_p2_points := 15;
+                    ELSE
+                        v_is_match := false;
+                        v_p1_correct := false;
+                        v_p2_correct := false;
+                        v_p1_points := 0;
+                        v_p2_points := 0;
                     END IF;
                 END IF;
 
@@ -661,25 +682,42 @@ BEGIN
                         IF lower(trim(v_p1_answer.answer_text)) = lower(trim(v_correct_str)) THEN
                             v_p1_correct := true;
                             v_p1_points := 10;
+                        ELSE
+                            v_p1_correct := false;
+                            v_p1_points := 0;
                         END IF;
                         IF lower(trim(v_p2_answer.answer_text)) = lower(trim(v_correct_str)) THEN
                             v_p2_correct := true;
                             v_p2_points := 10;
+                        ELSE
+                            v_p2_correct := false;
+                            v_p2_points := 0;
                         END IF;
+                        v_is_match := v_p1_correct AND v_p2_correct;
                     END;
                 ELSE
                     v_p1_points := 10;
                     v_p2_points := 10;
+                    v_is_match := true;
                 END IF;
 
             WHEN 'deep_questions' THEN
                 v_p1_points := 10;
                 v_p2_points := 10;
                 v_is_match := true;
+                v_p1_correct := true;
+                v_p2_correct := true;
 
             ELSE
-                v_p1_points := 5;
-                v_p2_points := 5;
+                IF lower(trim(v_p1_answer.answer_text)) = lower(trim(v_p2_answer.answer_text)) THEN
+                    v_is_match := true;
+                    v_p1_points := 10;
+                    v_p2_points := 10;
+                ELSE
+                    v_is_match := false;
+                    v_p1_points := 0;
+                    v_p2_points := 0;
+                END IF;
         END CASE;
 
         UPDATE player_answers SET points_awarded = v_p1_points, is_correct = v_p1_correct WHERE id = v_p1_answer.id;
